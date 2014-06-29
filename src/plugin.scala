@@ -24,11 +24,14 @@ object Import {
 
 object AngularTemplates extends AutoPlugin {
 
+  override def requires = SbtWeb
+
   override def trigger = AllRequirements
 
   val autoImport = Import
 
   import SbtWeb.autoImport._
+  import WebKeys._
   import autoImport._
   import AngularTemplatesKeys._
   import com.typesafe.sbt.web.js.JS
@@ -45,11 +48,14 @@ object AngularTemplates extends AutoPlugin {
     naming := identity _,
     outputHtml := Some("templates.html"),
     outputJs := Some("templates.js"),
-    angularTemplates := run.value
+    angularTemplates := run.value,
+    resourceGenerators in Assets <+= angularTemplates,
+    managedResourceDirectories in Assets += (resourceManaged in Assets in angularTemplates).value
   ) ++ inTask(angularTemplates)(inConfig(Assets)(Seq(
     includeFilter := GlobFilter("*.html"),
     sources := sourceDirectory.value.descendantsExcept(includeFilter.value, excludeFilter.value).get,
-    mappings := sources.value.pair(relativeTo(sourceDirectory.value))
+    mappings := sources.value.pair(relativeTo(sourceDirectory.value)),
+    resourceManaged := webTarget.value / "angular-templates" / "main"
   )))
 
   private def run = Def.task {
