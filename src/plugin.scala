@@ -50,7 +50,7 @@ object AngularTemplates extends AutoPlugin {
     outputJs := Some("templates.js"),
     angularTemplates := run.value,
     resourceGenerators in Assets <+= angularTemplates,
-    managedResourceDirectories in Assets += (resourceManaged in Assets in angularTemplates).value
+    managedResourceDirectories in Assets += (resourceManaged in (Assets, angularTemplates)).value
   ) ++ inTask(angularTemplates)(inConfig(Assets)(Seq(
     includeFilter := GlobFilter("*.html"),
     sources := sourceDirectory.value.descendantsExcept(includeFilter.value, excludeFilter.value).get,
@@ -59,8 +59,8 @@ object AngularTemplates extends AutoPlugin {
   )))
 
   private def run = Def.task {
-    val maps = (mappings in angularTemplates in Assets).value
-    val outDir = (resourceManaged in angularTemplates in Assets).value
+    val maps = (mappings in (Assets, angularTemplates)).value
+    val outDir = (resourceManaged in (Assets, angularTemplates)).value
 
     val compressor =
       if (compress.value) {
