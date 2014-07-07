@@ -105,7 +105,7 @@ object AngularTemplates extends AutoPlugin {
       IO.writer(f, "", IO.defaultCharset) { w =>
 	w.write(module.value + ".run(['$templateCache',function(t){")
 	tpls.foreach { case (n, t) =>
-	  w.write("t.put(" + JS.write(n) + "," + JS.write("<div>" + t + "</div>") + ");")
+	  w.write("t.put(" + JS.write(n) + "," + JS.write(t) + ");")
 	}
 	w.write("}]);")
       }
