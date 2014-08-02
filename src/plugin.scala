@@ -1,4 +1,4 @@
-package org.databrary.sbt
+package org.databrary.sbt.angular.templates
 
 import sbt._
 import sbt.Keys._
