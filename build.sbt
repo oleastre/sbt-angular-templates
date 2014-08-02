@@ -10,9 +10,9 @@ homepage := Some(url("http://github.com/databrary/sbt-angular-templates"))
 
 licenses := Seq("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
 
-version := "0.1-SNAPSHOT"
+version := "0.1"
 
-scalaVersion := "2.11.1"
+scalaVersion := "2.10.4"
 
 scalacOptions ++= Seq("-feature","-deprecation")
 
