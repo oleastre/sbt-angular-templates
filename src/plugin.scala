@@ -3,6 +3,8 @@ package org.databrary.sbt.angular.templates
 import sbt._
 import sbt.Keys._
 import com.typesafe.sbt.web.SbtWeb
+import com.typesafe.sbt.web.incremental
+import com.typesafe.sbt.web.incremental._
 
 object Import {
   val angularTemplates = TaskKey[Seq[File]]("angular-templates", "Compress, combine, and package angular HTML templates.")
@@ -54,62 +56,84 @@ object AngularTemplates extends AutoPlugin {
   ) ++ inTask(angularTemplates)(inConfig(Assets)(Seq(
     includeFilter := GlobFilter("*.html"),
     sources := sourceDirectory.value.descendantsExcept(includeFilter.value, excludeFilter.value).get,
-    mappings := sources.value.pair(relativeTo(sourceDirectory.value)),
+    mappings := sources.value.pair(f => relativeTo(sourceDirectory.value)(f).map(naming.value)),
     resourceManaged := webTarget.value / "angular-templates" / "main"
   )))
 
   private def run = Def.task {
     val maps = (mappings in (Assets, angularTemplates)).value
-    val outDir = (resourceManaged in (Assets, angularTemplates)).value
 
-    val compressor =
-      if (compress.value) {
-	val c = new com.googlecode.htmlcompressor.compressor.HtmlCompressor
-	c.setRemoveComments(compressRemoveComments.value)
-	c.setRemoveMultiSpaces(compressRemoveMultiSpaces.value)
-	c.setRemoveIntertagSpaces(compressRemoveIntertagSpaces.value)
-	c.setRemoveQuotes(compressRemoveQuotes.value)
-	c.setPreserveLineBreaks(compressPreserveLineBreaks.value)
-	if (compressRemoveSurroundingSpaces.value.nonEmpty)
-	  c.setRemoveSurroundingSpaces(compressRemoveSurroundingSpaces.value.mkString(","))
-	Some(c)
-      } else None
+    val hash = OpInputHash.hashString((
+      Seq(
+        Seq(compress.value, compressRemoveComments.value, compressRemoveMultiSpaces.value, compressRemoveIntertagSpaces.value, compressRemoveQuotes.value, compressPreserveLineBreaks.value)
+          .map(o => if (o) '1' else '0').mkString(""),
+        compressRemoveSurroundingSpaces.value.mkString(","),
+        module.value,
+        outputHtml.value.getOrElse(""),
+        outputJs.value.getOrElse(""))
+      ++ maps.map { case (f, n) => f.getAbsolutePath + "\0" + n })
+        .mkString("\0"))
 
-    def proc(html : String) : String =
-      compressor.fold(html)(_.compress(html))
-    val namer = naming.value
+    implicit val opInputHasher = OpInputHasher[Unit](_ => hash)
 
-    val tpls = maps.map { case (f, n) =>
-      (namer(n), proc(IO.read(f)))
+    val (outs, ()) = incremental.syncIncremental(streams.value.cacheDirectory / "run", Seq(())) {
+      case Seq() => (Map.empty, ())
+      case _ =>
+        val outDir = (resourceManaged in (Assets, angularTemplates)).value
+
+        val compressor =
+          if (compress.value) {
+            val c = new com.googlecode.htmlcompressor.compressor.HtmlCompressor
+            c.setRemoveComments(compressRemoveComments.value)
+            c.setRemoveMultiSpaces(compressRemoveMultiSpaces.value)
+            c.setRemoveIntertagSpaces(compressRemoveIntertagSpaces.value)
+            c.setRemoveQuotes(compressRemoveQuotes.value)
+            c.setPreserveLineBreaks(compressPreserveLineBreaks.value)
+            if (compressRemoveSurroundingSpaces.value.nonEmpty)
+              c.setRemoveSurroundingSpaces(compressRemoveSurroundingSpaces.value.mkString(","))
+            Some(c)
+          } else None
+
+        def proc(html : String) : String =
+          compressor.fold(html)(_.compress(html))
+        val namer = naming.value
+
+        val tpls = maps.map { case (f, n) =>
+          (n, proc(IO.read(f)))
+        }
+
+        val outs = outputHtml.value.map { o =>
+          val f = outDir / o
+          IO.writer(f, "", IO.defaultCharset) { w =>
+            tpls.foreach { case (n, t) =>
+              w.write("<script type=\"text/ng-template\" id=\"" + n
+                .replaceAllLiterally("&", "&amp;")
+                .replaceAllLiterally("<", "&lt;")
+                .replaceAllLiterally(">", "&gt;")
+                .replaceAllLiterally("\"", "&quot;")
+                .replaceAllLiterally("'", "&apos;")
+                + "\">")
+              w.write(t)
+              w.write("</script>")
+            }
+          }
+          f
+        }.toSeq ++
+        outputJs.value.map { o =>
+          val f = outDir / o
+          IO.writer(f, "", IO.defaultCharset) { w =>
+            w.write(module.value + ".run(['$templateCache',function(t){")
+            tpls.foreach { case (n, t) =>
+              w.write("t.put(" + JS.write(n) + "," + JS.write(t) + ");")
+            }
+            w.write("}]);")
+          }
+          f
+        }
+
+        (Map(() -> OpSuccess(maps.map(_._1).toSet, outs.toSet)), ())
     }
 
-    outputHtml.value.map { o =>
-      val f = outDir / o
-      IO.writer(f, "", IO.defaultCharset) { w =>
-	tpls.foreach { case (n, t) =>
-	  w.write("<script type=\"text/ng-template\" id=\"" + n
-	    .replaceAllLiterally("&", "&amp;")
-	    .replaceAllLiterally("<", "&lt;")
-	    .replaceAllLiterally(">", "&gt;")
-	    .replaceAllLiterally("\"", "&quot;")
-	    .replaceAllLiterally("'", "&apos;")
-	    + "\">")
-	  w.write(t)
-	  w.write("</script>")
-	}
-      }
-      f
-    }.toSeq ++
-    outputJs.value.map { o =>
-      val f = outDir / o
-      IO.writer(f, "", IO.defaultCharset) { w =>
-	w.write(module.value + ".run(['$templateCache',function(t){")
-	tpls.foreach { case (n, t) =>
-	  w.write("t.put(" + JS.write(n) + "," + JS.write(t) + ");")
-	}
-	w.write("}]);")
-      }
-      f
-    }
+    outs.toSeq
   }
 }

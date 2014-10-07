@@ -9,7 +9,7 @@ Each individual template file must contain a single top-level element.
 Add this to your project/plugins.sbt:
 
 ```scala
-addSbtPlugin("org.databrary" % "sbt-angular-templates" % "0.1")
+addSbtPlugin("org.databrary" % "sbt-angular-templates" % "0.2")
 ```
 
 You also must enable sbt-web plugins for your main project using `.enablePlugins(SbtWeb)`.
