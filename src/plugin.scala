@@ -3,7 +3,6 @@ package org.databrary.sbt.angular.templates
 import sbt._
 import sbt.Keys._
 import com.typesafe.sbt.web.SbtWeb
-import com.typesafe.sbt.web.incremental
 import com.typesafe.sbt.web.incremental._
 
 object Import {
@@ -76,7 +75,7 @@ object AngularTemplates extends AutoPlugin {
 
     implicit val opInputHasher = OpInputHasher[Unit](_ => hash)
 
-    val (outs, ()) = incremental.syncIncremental(streams.value.cacheDirectory / "run", Seq(())) {
+    val (outs, ()) = syncIncremental(streams.value.cacheDirectory / "run", Seq(())) {
       case Seq() => (Map.empty, ())
       case _ =>
         val outDir = (resourceManaged in (Assets, angularTemplates)).value

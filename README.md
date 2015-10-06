@@ -24,5 +24,5 @@ The main ones are:
 * `compress`: Compress HTML using [HtmlCompressor](https://code.google.com/p/htmlcompressor/#Using_HTML_Compressor_from_Java_API).  Most of the options listed there (such as `RemoveIntertagSpaces`) have equivalent settings here (`compressRemoveIntertagSpaces`).
 * `module`: Name of angular application module variable.  Defaults to "module".
 * `naming`: Function to use to map each template source file path to its template id.
-* `includeFilter`: Which source templates to include.  Defaults to all .html files under assets.
+* `sbt.Keys.includeFilter`: Which source templates to include.  Defaults to all .html files under assets.
 
