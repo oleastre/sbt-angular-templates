@@ -98,7 +98,7 @@ object AngularTemplates extends AutoPlugin {
         val namer = naming.value
 
         val tpls = maps.map { case (f, n) =>
-          (n, proc(IO.read(f)))
+          (namer(n), proc(IO.read(f)))
         }
 
         val outs = outputHtml.value.map { o =>
